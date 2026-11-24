@@ -47,7 +47,7 @@
   .arrow{text-align:center;color:var(--muted);font-size:12px;margin:-4px 0 6px}
   .secured{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);margin-top:10px;padding-top:8px}
   #step{display:none;border:1px solid var(--accent);background:#1d1416;border-radius:14px;padding:12px;margin-bottom:14px}
-  body.pathmode #step{display:block}
+  body.pathmode #step{display:block;position:sticky;top:8px;z-index:5;box-shadow:0 8px 24px rgba(0,0,0,.6)}
   #step .k{font-size:12px;color:var(--accent2);text-transform:uppercase;letter-spacing:.06em}
   #step h3{margin:4px 0 6px;font-size:17px}
   #step p{margin:0 0 10px}
@@ -284,6 +284,13 @@ function showStep(){
   el("prev").disabled = idx===0;
   el("next").textContent = idx===P.steps.length-1 ? "Start over" : "Next";
   document.querySelectorAll(".block").forEach(x=>x.classList.toggle("hl", s.hl.includes(x.dataset.id)));
+  scrollToBlock(document.querySelector(".block.hl"));
+}
+function scrollToBlock(b){
+  if(!b) return;
+  const stepH = document.body.classList.contains("pathmode") ? el("step").offsetHeight + 24 : 16;
+  const y = b.getBoundingClientRect().top + window.scrollY - stepH - 40;
+  window.scrollTo({top: Math.max(0,y), behavior:"smooth"});
 }
 function startPath(p){
   closeSheet();
@@ -291,7 +298,6 @@ function startPath(p){
   document.body.classList.add("pathmode");
   document.querySelectorAll("[data-path]").forEach(b=>b.classList.toggle("on",b.dataset.path===p));
   showStep();
-  el("step").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function exitPath(){
   cur=null;
@@ -307,6 +313,7 @@ el("flrBtn").addEventListener("click",()=>{
   const on = document.body.classList.toggle("showflr");
   el("flrBtn").classList.toggle("on",on);
   el("flrBtn").textContent = on ? "Hide where FLR is used" : "Show where FLR is used";
+  if(on) scrollToBlock(document.querySelector(".block.flr"));
 });
 render();
 </script>
