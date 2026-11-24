@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Flare stack, on one map</title>
+<meta name="description" content="Flare in three layers: core protocols, products and services. Tap a block or follow one XRP through the stack.">
+<style>
+  :root{
+    --bg:#101014; --panel:#18181e; --card:#1f1f27; --line:#2e2e38;
+    --text:#ececf1; --muted:#9a9aa8; --accent:#ff5a4e; --accent2:#ffb347;
+    --live:#3ecf8e; --sgb:#f0b429; --ann:#8b8b99;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--accent2)}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 14px 140px}
+  h1{font-size:26px;line-height:1.2;margin:4px 0 8px}
+  h1 span{color:var(--accent)}
+  .lede{color:var(--muted);margin:0 0 14px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:13px;color:var(--muted);margin-bottom:14px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .controls{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+  .paths{display:flex;flex-wrap:wrap;gap:8px}
+  button{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer}
+  button:hover{border-color:#4a4a58}
+  button.on{border-color:var(--accent);background:#2a1a1c}
+  .flr-toggle{align-self:flex-start;font-size:14px}
+  .layer{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--panel);position:relative}
+  .layer h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+  .layer p.sub{font-size:13px;color:var(--muted);margin:0 0 10px}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  @media(min-width:620px){.grid.four{grid-template-columns:repeat(4,1fr)}.grid.three{grid-template-columns:repeat(3,1fr)}}
+  .grid.three .block:last-child{grid-column:1 / -1}
+  @media(min-width:620px){.grid.three .block:last-child{grid-column:auto}}
+  .block{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:left;min-height:70px;display:flex;flex-direction:column;gap:6px;transition:opacity .2s,border-color .2s,box-shadow .2s;position:relative}
+  .block .name{font-weight:600;font-size:15px;line-height:1.25}
+  .block .st{font-size:12px;color:var(--muted)}
+  .block.ann{border-style:dashed}
+  .block.sel{border-color:var(--accent2)}
+  .flrtag{display:none;position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;color:#101014;background:var(--accent);border-radius:6px;padding:1px 5px}
+  body.showflr .block.flr .flrtag{display:block}
+  body.showflr .block.flr .name{padding-right:34px}
+  body.showflr .block.flr{box-shadow:0 0 0 1px var(--accent) inset}
+  body.pathmode .block{opacity:.28}
+  body.pathmode .block.hl{opacity:1;border-color:var(--accent);box-shadow:0 0 0 2px rgba(255,90,78,.35)}
+  .arrow{text-align:center;color:var(--muted);font-size:12px;margin:-4px 0 6px}
+  .secured{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);margin-top:10px;padding-top:8px}
+  #step{display:none;border:1px solid var(--accent);background:#1d1416;border-radius:14px;padding:12px;margin-bottom:14px}
+  body.pathmode #step{display:block}
+  #step .k{font-size:12px;color:var(--accent2);text-transform:uppercase;letter-spacing:.06em}
+  #step h3{margin:4px 0 6px;font-size:17px}
+  #step p{margin:0 0 10px}
+  #step .nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  #step .note{font-size:13px;color:var(--muted);margin-top:8px}
+  #sheet{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:16px 16px 0 0;max-height:62vh;overflow:auto;transform:translateY(105%);visibility:hidden;transition:transform .25s,visibility .25s;z-index:10;box-shadow:0 -10px 30px rgba(0,0,0,.5)}
+  #sheet.open{transform:none;visibility:visible}
+  #sheet .in{max-width:760px;margin:0 auto;padding:14px 16px 22px}
+  #sheet .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  #sheet h3{margin:0;font-size:19px}
+  #sheet .stl{font-size:13px;margin:4px 0 10px}
+  #sheet ul{padding-left:18px;margin:6px 0 10px}
+  #sheet li{margin-bottom:5px}
+  #sheet .dep{font-size:13px;color:var(--muted)}
+  #sheet .flrline{font-size:14px;border-left:3px solid var(--accent);padding-left:9px;margin:10px 0}
+  .x{background:none;border:none;font-size:24px;line-height:1;padding:0 4px;color:var(--muted)}
+  footer{margin-top:24px;font-size:13px;color:var(--muted)}
+  footer h2{font-size:14px;color:var(--text);margin:18px 0 6px}
+  footer ul{padding-left:18px;margin:0}
+  footer li{margin-bottom:4px;word-break:break-word}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The Flare stack, <span>on one map</span></h1>
+  <p class="lede"><a href="https://x.com/HugoPhilion/status/2124597061752680919">Hugo Philion described Flare</a> in three layers: core protocols, products built on them, and services built on the products. Tap any block to see what it does and what it stands on. Or follow one XRP through the stack.</p>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--live)"></i>Live on Flare</span>
+    <span><i class="dot" style="background:var(--sgb)"></i>Live on Songbird, Flare next</span>
+    <span><i class="dot" style="background:var(--ann)"></i>Announced</span>
+  </div>
+
+  <div class="controls">
+    <div class="paths">
+      <button data-path="xrp">Follow one XRP</button>
+      <button data-path="lz">Follow a LayerZero message</button>
+      <button data-path="btc">Follow a bitcoin (announced)</button>
+    </div>
+    <button class="flr-toggle" id="flrBtn">Show where FLR is used</button>
+  </div>
+
+  <div id="step">
+    <div class="k" id="stepK"></div>
+    <h3 id="stepH"></h3>
+    <p id="stepP"></p>
+    <div class="nav">
+      <button id="prev">Back</button>
+      <button id="next">Next</button>
+      <button id="exit">Exit</button>
+    </div>
+    <div class="note" id="stepNote"></div>
+  </div>
+
+  <section class="layer">
+    <h2>Layer 3 · Services</h2>
+    <p class="sub">Built by other teams on top of the products. Examples, not a full list.</p>
+    <div class="grid four" id="L3"></div>
+  </section>
+  <div class="arrow">▲ built on ▲</div>
+  <section class="layer">
+    <h2>Layer 2 · Products</h2>
+    <p class="sub">Built by Flare on the core protocols.</p>
+    <div class="grid four" id="L2"></div>
+  </section>
+  <div class="arrow">▲ built on ▲</div>
+  <section class="layer">
+    <h2>Layer 1 · Core protocols</h2>
+    <p class="sub">Decentralised data and confidential compute, run by the network itself.</p>
+    <div class="grid three" id="L1"></div>
+    <div class="secured">Who runs it: the same set of around 100 data providers drawn from Flare's validators, weighted by FLR that holders stake and delegate to them.</div>
+  </section>
+
+  <footer>
+    <p>Not affiliated with Flare. A map of how the pieces fit, not an assessment of any of them. Statuses checked 23 Nov 2026.</p>
+    <h2>Sources</h2>
+    <ul>
+      <li>Hugo Philion on X, 22 Nov 2026 (the three layers and the four products): <a href="https://x.com/HugoPhilion/status/2124597061752680919">x.com/HugoPhilion/status/2124597061752680919</a></li>
+      <li>FTSO: <a href="https://dev.flare.network/ftso/overview">dev.flare.network/ftso/overview</a></li>
+      <li>FDC: <a href="https://dev.flare.network/fdc/overview">dev.flare.network/fdc/overview</a></li>
+      <li>FAssets: <a href="https://dev.flare.network/fassets/overview">dev.flare.network/fassets/overview</a></li>
+      <li>Smart Accounts: <a href="https://dev.flare.network/smart-accounts/overview">dev.flare.network/smart-accounts/overview</a></li>
+      <li>Confidential Compute: <a href="https://dev.flare.network/fcc/overview">dev.flare.network/fcc/overview</a> and <a href="https://chainwire.org/2026/10/01/flare-confidential-compute-to-bring-private-institutional-data-onchain-starting-with-hex-trusts-usdx/">Flare on Songbird launch, 1 Oct 2026</a></li>
+      <li>DVN: <a href="https://flare.network/news/flare-joins-layerzero-as-a-dvn-bringing-network-level-security-to-cross-chain-value">Flare joins LayerZero as a DVN, 12 Nov 2026</a></li>
+      <li>FDC fees and FIRE: <a href="https://proposals.flare.network/FIP/FIP_16.html">FIP.16</a></li>
+      <li>FBTC: <a href="https://u.today/xrp-was-just-the-warm-up-flare-ceo-eyes-bitcoin-integration-for-next-defi-push">U.Today, 28 Jul 2026</a></li>
+      <li>Firelight: <a href="https://firelight.finance">firelight.finance</a></li>
+    </ul>
+    <p style="margin-top:14px">Made by <a href="https://x.com/anubis_crypto_">@anubis_crypto_</a> · <a href="https://theflarebrief.substack.com">The Flare Brief</a></p>
+  </footer>
+</div>
+
+<div id="sheet" role="dialog" aria-modal="false" aria-labelledby="sh">
+  <div class="in">
+    <div class="top"><h3 id="sh"></h3><button class="x" id="close" aria-label="Close">×</button></div>
+    <div class="stl" id="sst"></div>
+    <div id="sbody"></div>
+  </div>
+</div>
+
+<script>
+const ST = {
+  live:{t:"Live on Flare", c:"var(--live)"},
+  sgb:{t:"Live on Songbird, Flare deployment to follow", c:"var(--sgb)"},
+  ann:{t:"Announced, not live yet", c:"var(--ann)"}
+};
+const B = {
+  // Layer 1
+  ftso:{L:1,name:"FTSO",short:"Prices",st:"live",flr:true,
+    pts:["Flare's built-in price oracle: up to 1,000 feeds across crypto, equities and commodities.",
+         "Around 100 independent data providers support each feed. Holders choose them by delegating stake.",
+         "Feeds update with every block, about every 1.1 seconds, and are anchored every 90 seconds by a full vote of all providers."],
+    dep:"Stands on: Flare's validators and the data providers they run.",
+    flr:"Provider weight comes from FLR staked and delegated to them."},
+  fdc:{L:1,name:"FDC",short:"Proofs from other chains",st:"live",flr:true,
+    pts:["The Flare Data Connector proves to Flare contracts that something happened elsewhere, for example a payment on the XRP Ledger.",
+         "An answer counts only when data providers holding more than 50% of the weight sign it.",
+         "Only a Merkle root goes on chain. Contracts check each proof against it."],
+    dep:"Stands on: the same data providers as FTSO.",
+    flr:"Each request pays a fee. Per FIP.16, 90% of FDC fees go to FIRE."},
+  fcc:{L:1,name:"Confidential compute",short:"Private data, public result",st:"sgb",
+    pts:["Runs approved code inside secure hardware (TEEs) and returns a signed result that contracts can check, without publishing the private inputs.",
+         "Results are authorised by the same provider set as FTSO and FDC.",
+         "Live on Songbird since 1 Oct 2026. First use: a proof of reserves for Hex Trust's USDX. A Flare deployment follows separately."],
+    dep:"Stands on: the data provider set, plus TEE machines (run initially by the Flare Foundation)."},
+  // Layer 2
+  fxrp:{L:2,name:"FXRP",short:"XRP on Flare, 1:1",st:"live",flr:true,
+    pts:["XRP brought to Flare 1:1 through FAssets. Live since September 2025.",
+         "The XRP sits with agents or in the Core Vault, a multisig account on the XRP Ledger. Agents post collateral on Flare and redeem for users.",
+         "FDC proves the XRP payment before FXRP is minted. FTSO prices the collateral.",
+         "FXRP can also travel to other chains as a LayerZero OFT."],
+    dep:"Stands on: FDC, FTSO.",
+    flr:"Part of agent collateral is a pool of FLR, and every mint runs on Flare."},
+  fsa:{L:2,name:"Smart Accounts",short:"Use Flare from an XRPL wallet",st:"live",flr:true,
+    pts:["Every XRPL address gets its own account on Flare, and only that address controls it.",
+         "You give instructions with ordinary XRPL payments. FDC proves each payment to the account on Flare.",
+         "Supported today: FXRP transfers and redemptions, deposits and withdrawals in Firelight and Upshift vaults, plus custom calls.",
+         "Works from wallets such as Xaman, Ledger, Joey, D'CENT and Bifrost."],
+    dep:"Stands on: FDC, FXRP.",
+    flr:"You don't need to hold FLR. Each step still runs on Flare, where gas is paid in FLR."},
+  fbtc:{L:2,name:"FBTC",short:"Bitcoin on Flare",st:"ann",
+    pts:["The same FAssets model as FXRP, for bitcoin.",
+         "Flare says FBTC will be paired with confidential compute, aimed at institutions that want private positions.",
+         "BTC was part of the FAssets testnet beta in December 2023. No launch date announced."],
+    dep:"Will stand on: FDC, FTSO, confidential compute."},
+  dvn:{L:2,name:"DVN for LayerZero",short:"Checks cross-chain messages",st:"ann",flr:true,
+    pts:["A DVN is one of the verifiers that confirm LayerZero messages, the system many tokens use to move between chains.",
+         "Flare's data providers each check the source chain on their own. A stake-weighted majority confirms, and a verifier contract on the destination chain votes as the DVN.",
+         "Flare says early December, on Flare and Ethereum first. Issuers choose whether to add it."],
+    dep:"Stands on: FDC.",
+    flr:"Each verification runs as an FDC request paid in FLR."},
+  // Layer 3
+  lend:{L:3,name:"Lending",short:"Borrow against FXRP",st:"live",
+    pts:["Markets where FXRP or stXRP is collateral, for example Kinetic on Flare.",
+         "Because FXRP is a LayerZero OFT, it is also used outside Flare, for example on Morpho on Ethereum."],
+    dep:"Stands on: FXRP."},
+  vault:{L:3,name:"Vaults",short:"Managed XRP yield",st:"live",
+    pts:["Vaults that take FXRP and run strategies for you, for example Upshift's earnXRP.",
+         "Smart Accounts can deposit into some of them straight from an XRPL wallet."],
+    dep:"Stands on: FXRP, Smart Accounts."},
+  dex:{L:3,name:"DEXs",short:"Swaps and liquidity",st:"live",
+    pts:["Exchanges on Flare such as SparkDEX, Enosys and BlazeSwap, with FXRP pairs.",
+         "SparkDEX perpetuals use FTSO prices."],
+    dep:"Stands on: FXRP, FTSO."},
+  fire:{L:3,name:"Firelight staking",short:"FXRP as DeFi cover",st:"live",
+    pts:["Stake FXRP, get stXRP. The staked capital backs cover for other DeFi protocols, such as Kraken DeFi Earn and Lido Earn vaults.",
+         "Cover, not insurance: payouts are limited to the capital in the pool.",
+         "Reachable in one flow from an XRPL wallet through Smart Accounts."],
+    dep:"Stands on: FXRP, Smart Accounts."}
+};
+const ORDER = {L3:["lend","vault","dex","fire"],L2:["fxrp","fsa","fbtc","dvn"],L1:["ftso","fdc","fcc"]};
+
+const PATHS = {
+  xrp:{title:"Follow one XRP", note:"You never had to hold FLR. Every step on Flare still used it for gas, and both proofs were FDC requests.",
+    steps:[
+      {h:"Send XRP from your own wallet", p:"From an XRPL wallet such as Xaman or Ledger, you send XRP to Flare's Core Vault, with a short instruction in the memo.", hl:["fxrp"]},
+      {h:"The network checks the payment", p:"Flare's data providers attest through FDC that the XRPL payment really happened.", hl:["fdc"]},
+      {h:"FXRP appears on Flare", p:"The same amount of FXRP is minted to your account on Flare, minus fees. An executor finishes the mint and takes its fee from the minted FXRP.", hl:["fxrp","fsa"]},
+      {h:"Tell your Smart Account what to do", p:"A second XRPL payment carries the next instruction, for example: deposit into a vault. FDC proves this payment too. Your XRPL address is the only key to the account.", hl:["fsa","fdc"]},
+      {h:"Your XRP goes to work", p:"The FXRP lands in Firelight, where you get stXRP, or in a vault. From there it can also reach lending markets and DEXs, which use FTSO prices.", hl:["fire","vault","lend","dex","ftso"]}
+    ]},
+  lz:{title:"Follow a LayerZero message", note:"Announced for early December. Adding Flare's DVN is optional for each issuer, and which issuers add it first isn't public yet.",
+    steps:[
+      {h:"A token moves between chains", p:"An app sends a token or message through LayerZero. The token's issuer decides which verifiers (DVNs) have to confirm it.", hl:["dvn"]},
+      {h:"Flare's providers check the source", p:"Each of Flare's data providers checks the source chain on its own.", hl:["fdc"]},
+      {h:"A majority confirms", p:"Once a stake-weighted majority agrees, the result goes to a verifier contract on the destination chain, which votes as Flare's DVN.", hl:["dvn","fdc"]},
+      {h:"The fee", p:"Each verification runs as an FDC request paid in FLR. Per FIP.16, 90% of FDC fees go to FIRE.", hl:["fdc","dvn"]}
+    ]},
+  btc:{title:"Follow a bitcoin (announced)", note:"FBTC isn't live and has no announced launch date. This path follows what Flare has said about it.",
+    steps:[
+      {h:"BTC on Bitcoin", p:"The plan uses the same FAssets model as FXRP: BTC is sent on Bitcoin, FDC proves it, and FBTC is minted on Flare.", hl:["fbtc","fdc"]},
+      {h:"Private by design", p:"Flare says FBTC will be paired with confidential compute, so that institutions can hold positions without showing them to everyone.", hl:["fbtc","fcc"]},
+      {h:"Same services on top", p:"From there, FBTC would plug into the same kinds of services as FXRP: lending, vaults and DEXs.", hl:["lend","vault","dex"]}
+    ]}
+};
+
+const el = id => document.getElementById(id);
+function render(){
+  for(const [lid,ids] of Object.entries(ORDER)){
+    const g = el(lid);
+    ids.forEach(id=>{
+      const b = B[id];
+      const btn = document.createElement("button");
+      btn.className = "block" + (b.st==="ann"?" ann":"") + (b.flr?" flr":"");
+      btn.dataset.id = id;
+      btn.innerHTML = `<span class="flrtag">FLR</span><span class="name">${b.name}</span><span class="st"><i class="dot" style="background:${ST[b.st].c}"></i>${b.short}</span>`;
+      btn.addEventListener("click",()=>openSheet(id));
+      g.appendChild(btn);
+    });
+  }
+}
+function openSheet(id){
+  const b = B[id];
+  document.querySelectorAll(".block").forEach(x=>x.classList.toggle("sel",x.dataset.id===id));
+  el("sh").textContent = b.name;
+  el("sst").innerHTML = `<i class="dot" style="background:${ST[b.st].c}"></i>${ST[b.st].t}`;
+  let h = "<ul>"+b.pts.map(p=>`<li>${p}</li>`).join("")+"</ul>";
+  if(b.flr) h += `<div class="flrline"><b>Where FLR shows up:</b> ${b.flr}</div>`;
+  h += `<div class="dep">${b.dep}</div>`;
+  el("sbody").innerHTML = h;
+  el("sheet").classList.add("open");
+}
+function closeSheet(){ el("sheet").classList.remove("open"); document.querySelectorAll(".block").forEach(x=>x.classList.remove("sel")); }
+el("close").addEventListener("click",closeSheet);
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeSheet(); exitPath(); }});
+
+let cur=null, idx=0;
+function showStep(){
+  const P = PATHS[cur], s = P.steps[idx];
+  el("stepK").textContent = `${P.title} · step ${idx+1} of ${P.steps.length}`;
+  el("stepH").textContent = s.h;
+  el("stepP").textContent = s.p;
+  el("stepNote").textContent = idx===P.steps.length-1 ? P.note : "";
+  el("prev").disabled = idx===0;
+  el("next").textContent = idx===P.steps.length-1 ? "Start over" : "Next";
+  document.querySelectorAll(".block").forEach(x=>x.classList.toggle("hl", s.hl.includes(x.dataset.id)));
+}
+function startPath(p){
+  closeSheet();
+  cur=p; idx=0;
+  document.body.classList.add("pathmode");
+  document.querySelectorAll("[data-path]").forEach(b=>b.classList.toggle("on",b.dataset.path===p));
+  showStep();
+  el("step").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function exitPath(){
+  cur=null;
+  document.body.classList.remove("pathmode");
+  document.querySelectorAll("[data-path]").forEach(b=>b.classList.remove("on"));
+  document.querySelectorAll(".block").forEach(x=>x.classList.remove("hl"));
+}
+document.querySelectorAll("[data-path]").forEach(b=>b.addEventListener("click",()=>startPath(b.dataset.path)));
+el("next").addEventListener("click",()=>{ idx = (idx+1) % PATHS[cur].steps.length; showStep(); });
+el("prev").addEventListener("click",()=>{ if(idx>0){ idx--; showStep(); }});
+el("exit").addEventListener("click",exitPath);
+el("flrBtn").addEventListener("click",()=>{
+  const on = document.body.classList.toggle("showflr");
+  el("flrBtn").classList.toggle("on",on);
+  el("flrBtn").textContent = on ? "Hide where FLR is used" : "Show where FLR is used";
+});
+render();
+</script>
+</body>
+</html>
